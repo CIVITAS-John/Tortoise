@@ -120,7 +120,7 @@ trait ReporterPrims extends PrimUtils {
         s"""procedures["${call.name}"](${args.mkString(",")})"""
 
       // Blarg
-      case _: prim._unaryminus         => s" -${arg(0)}" // The space is important, because these can be nested --JAB (6/12/14)
+      case _: prim._unaryminus         => s" -(${arg(0)})" // The space is important, because these can be nested --JAB (6/12/14)
       case _: prim._not                => s"!${arg(0)}"
       case _: prim._count              => s"${arg(0)}.size()"
       case _: prim._any                => s"!${arg(0)}.isEmpty()"
@@ -186,6 +186,10 @@ trait ReporterPrims extends PrimUtils {
       case _: Optimizer._anywith =>
         val agents = arg(0)
         s"$agents._optimalAnyWith(${handlers.fun(r.args(1), true)})"
+
+      case o: Optimizer._optimizecount =>
+        val agents = arg(0)
+        s"$agents._optimalCheckCount(${o.checkValue}, ${o.operator})"
 
       case _: Optimizer._patchhereinternal => "SelfManager.self()._optimalPatchHereInternal()"
       case _: Optimizer._patchnorth        => "SelfManager.self()._optimalPatchNorth()"
@@ -302,7 +306,10 @@ trait CommandPrims extends PrimUtils {
     def arg(i: Int) = handlers.reporter(s.args(i))
     def commaArgs = argsSep(", ")
     def args =
-      s.args.collect{ case x: ReporterApp => handlers.reporter(x) }
+      s.args.collect {
+        case x: ReporterApp  => handlers.reporter(x)
+        case z: CommandBlock => s"() => { ${handlers.commands(z)} }"
+      }
     def argsSep(sep: String) =
       args.mkString(sep)
 
@@ -333,8 +340,8 @@ trait CommandPrims extends PrimUtils {
       case _: prim.etc._error            => s"throw new Error(${arg(0)});"
       case h: prim._hatch                => generateHatch(s, h.breedName)
       case h: Optimizer._hatchfast       => optimalGenerateHatch(s, h.breedName)
-      case _: prim._bk                   => s"SelfManager.self().fd(-${arg(0)});"
-      case _: prim.etc._left             => s"SelfManager.self().right(-${arg(0)});"
+      case _: prim._bk                   => s"SelfManager.self().fd(-(${arg(0)}));"
+      case _: prim.etc._left             => s"SelfManager.self().right(-(${arg(0)}));"
       case _: prim.etc._diffuse          => s"world.topology.diffuse(${jsString(getReferenceName(s))}, ${arg(1)}, false)"
       case _: prim.etc._diffuse4         => s"world.topology.diffuse(${jsString(getReferenceName(s))}, ${arg(1)}, true)"
       case _: prim.etc._uphill           => s"Prims.uphill(${jsString(getReferenceName(s))})"

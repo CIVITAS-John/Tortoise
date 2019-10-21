@@ -1,5 +1,7 @@
 if (typeof Polyglot !== "undefined") {
 
+  const Maybe = tortoise_require('brazier/maybe');
+
   const BAIS     = Java.type('java.io.ByteArrayInputStream');
   const BAOS     = Java.type('java.io.ByteArrayOutputStream');
   const Base64   = Java.type('java.util.Base64');
@@ -39,8 +41,12 @@ if (typeof Polyglot !== "undefined") {
   const exportFile =
     function(str) {
       return function(filename) {
-        Files.createDirectories(Paths.get(filename).getParent());
-        Files.write(Paths.get(filename), Compiler.getBytes(str));
+        const path   = Paths.get(filename);
+        const parent = path.getParent();
+        if (parent !== null) {
+          Files.createDirectories(parent);
+        }
+        Files.write(path, Compiler.getBytes(str));
       };
     };
 
@@ -134,6 +140,13 @@ if (typeof Polyglot !== "undefined") {
       };
     };
 
+  const asyncDialog =
+    { getChoice:   function(message, choices) { return function() { return Maybe.None; }; }
+    , getText:     function(message)          { return function() { return Maybe.None; }; }
+    , getYesOrNo:  function(message)          { return function() { return Maybe.None; }; }
+    , showMessage: function(message)          { return function() { return Maybe.None; }; }
+    }
+
   const dialog =
     { confirm: function(str) { return true; }
     , input:   function(str) { return 'dummy implementation'; }
@@ -141,10 +154,13 @@ if (typeof Polyglot !== "undefined") {
     , yesOrNo: function(str) { return true; }
     }
 
+  let outputBuffer = ""
+
   const importExport =
     { exportFile:    exportFile
-    , getOutput:     function() { return ""; }
-    , getViewBase64: function() { return "data:image/jpeg;base64,/9j/fake64"; }
+    , getNlogo:      function() { return ""; }
+    , getOutput:     function() { return outputBuffer; }
+    , getViewBase64: function() { return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVQYV2NgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII="; }
     , importFile:    slurpFilepathAsync
     };
 
@@ -162,8 +178,8 @@ if (typeof Polyglot !== "undefined") {
     };
 
   const output =
-    { clear: function() {}
-    , write: function() { return function(str) { context.getWriter().print(str); }; }
+    { clear: function() { outputBuffer = ""; }
+    , write: function(str) { outputBuffer += str; }
     };
 
   const world = { resizeWorld: function(agent) {} };
@@ -178,7 +194,8 @@ if (typeof Polyglot !== "undefined") {
   }
 
   global.modelConfig =
-    { base64ToImageData: base64ToImageData
+    { asyncDialog:       asyncDialog
+    , base64ToImageData: base64ToImageData
     , dialog:            dialog
     , importExport:      importExport
     , inspection:        inspection
